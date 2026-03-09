@@ -6,3 +6,4 @@ class Produto(BaseModel):
     nome: str
     descricao: str = None
     preco: float = 0.0
+    foto: bytes = None

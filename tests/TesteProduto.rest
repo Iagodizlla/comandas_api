@@ -10,7 +10,8 @@ content-type: application/json
 {
     "nome" : "Iago",
     "descricao" : "azul",
-    "preco" : 10.0
+    "preco" : 10.0,
+    "foto" : null
 }
 
 ### Verbo PUT – atualiza
@@ -20,7 +21,8 @@ content-type: application/json
 {
     "nome" : "Iago",
     "descricao" : "vermelho",
-    "preco" : 11.0
+    "preco" : 11.0,
+    "foto" : null
 }
 ### Verbo DELETE - excluir
 DELETE http://127.0.0.1:8000/produto/3 HTTP/1.1
