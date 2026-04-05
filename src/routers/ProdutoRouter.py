@@ -1,5 +1,7 @@
 #Iago Henrique Schelmper
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from infra.rate_limit import limiter, get_rate_limit
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -9,6 +11,8 @@ ProdutoCreate,
 ProdutoUpdate,
 ProdutoResponse
 )
+from domain.schemas.AuthSchema import FuncionarioAuth
+
 # Infra
 from infra.orm.ProdutoModel import ProdutoDB
 from infra.database import get_db
@@ -18,7 +22,8 @@ from infra.dependencies import require_group
 router = APIRouter()
 
 @router.get("/produto/publico", response_model=List[ProdutoResponse], tags=["Produto"], status_code=status.HTTP_200_OK)
-async def get_produto_publico(db: Session = Depends(get_db)):
+@limiter.limit(get_rate_limit("moderate"))
+async def get_produto_publico(request: Request, db: Session = Depends(get_db)):
     """Listar todos – pública"""
     try:
         produtos = db.query(ProdutoDB).all()
@@ -30,7 +35,9 @@ async def get_produto_publico(db: Session = Depends(get_db)):
         )
 
 @router.get("/produto/", response_model=List[ProdutoResponse], tags=["Produto"], status_code=status.HTTP_200_OK)
+@limiter.limit(get_rate_limit("moderate"))
 async def get_produto(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: FuncionarioAuth = Depends(get_current_active_user)
 ):
@@ -45,7 +52,8 @@ async def get_produto(
         )
 
 @router.get("/produto/{id}", response_model=ProdutoResponse, tags=["Produto"], status_code=status.HTTP_200_OK)
-async def get_produto(id: int, db: Session = Depends(get_db),
+@limiter.limit(get_rate_limit("moderate"))
+async def get_produto(request: Request, id: int, db: Session = Depends(get_db),
     current_user: FuncionarioAuth = Depends(get_current_active_user)):
     """Retorna um produto específico pelo ID"""
     try:
@@ -62,7 +70,8 @@ async def get_produto(id: int, db: Session = Depends(get_db),
         )
 
 @router.post("/produto/", response_model=ProdutoResponse, status_code=status.HTTP_201_CREATED, tags=["Produto"])
-async def post_produto(produto_data: ProdutoCreate, db: Session = Depends(get_db),
+@limiter.limit(get_rate_limit("default"))
+async def post_produto(request: Request, produto_data: ProdutoCreate, db: Session = Depends(get_db),
     current_user: FuncionarioAuth = Depends(require_group([1]))):
     """Cria um novo produto"""
     try:
@@ -93,7 +102,8 @@ async def post_produto(produto_data: ProdutoCreate, db: Session = Depends(get_db
         )
 
 @router.put("/produto/{id}", response_model=ProdutoResponse, tags=["Produto"], status_code=status.HTTP_200_OK)
-async def put_produto(id: int, produto_data: ProdutoUpdate, db: Session = Depends(get_db),
+@limiter.limit(get_rate_limit("default"))
+async def put_produto(request: Request, id: int, produto_data: ProdutoUpdate, db: Session = Depends(get_db),
     current_user: FuncionarioAuth = Depends(require_group([1]))):
     """Atualiza um produto existente"""
     try:
@@ -125,7 +135,8 @@ async def put_produto(id: int, produto_data: ProdutoUpdate, db: Session = Depend
         )
 
 @router.delete("/produto/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Produto"], summary="Remover produto")
-async def delete_produto(id: int, db: Session = Depends(get_db),
+@limiter.limit(get_rate_limit("rescritive"))
+async def delete_produto(request: Request, id: int, db: Session = Depends(get_db),
     current_user: FuncionarioAuth = Depends(require_group([1]))):
     """Remove um produto"""
     try:
