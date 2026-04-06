@@ -60,15 +60,13 @@ async def post_cliente(request: Request, cliente_data: ClienteCreate, db: Sessio
     current_user: FuncionarioAuth = Depends(require_group([1, 3]))):
     """Cria um novo cliente"""
     try:
-        # Verifica se já existe cliente com este CPF
         existing_cliente = db.query(ClienteDB).filter(ClienteDB.cpf == cliente_data.cpf).first()
         if existing_cliente:
             raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Já existe um cliente com este CPF"
             )
-        # Cria o novo cliente
         novo_cliente = ClienteDB(
-            id=None, # Será auto-incrementado
+            id=None, 
             nome=cliente_data.nome,
             cpf=cliente_data.cpf,
             telefone=cliente_data.telefone
@@ -78,7 +76,6 @@ async def post_cliente(request: Request, cliente_data: ClienteCreate, db: Sessio
         db.add(novo_cliente)
         db.refresh(novo_cliente)
 
-        # ✅ dados novos
         dados_novos = {
             "id": novo_cliente.id,
             "nome": novo_cliente.nome,
@@ -117,18 +114,15 @@ async def put_cliente(request: Request, id: int, cliente_data: ClienteUpdate, db
             raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Cliente não encontrado"
             )
-        # Verifica se está tentando atualizar para um CPF que já existe
         if cliente_data.cpf and cliente_data.cpf != cliente.cpf:
             existing_cliente = db.query(ClienteDB).filter(ClienteDB.cpf == cliente_data.cpf).first()
             if existing_cliente:
                 raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Já existe um cliente com este CPF"
                 )
-        # Atualiza apenas os campos fornecidos
         update_data = cliente_data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(cliente, field, value)
-        # ✅ dados antigos (ANTES)
         dados_antigos = {
             "id": cliente.id,
             "nome": cliente.nome,
@@ -136,7 +130,6 @@ async def put_cliente(request: Request, id: int, cliente_data: ClienteUpdate, db
             "telefone": cliente.telefone
         }
 
-        # Atualiza campos
         update_data = cliente_data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(cliente, field, value)
@@ -144,15 +137,12 @@ async def put_cliente(request: Request, id: int, cliente_data: ClienteUpdate, db
         db.commit()
         db.refresh(cliente)
 
-        # ✅ dados novos (DEPOIS)
         dados_novos = {
             "id": cliente.id,
             "nome": cliente.nome,
             "cpf": cliente.cpf,
             "telefone": cliente.telefone
         }
-
-        # ✅ auditoria
         AuditoriaService.registrar_acao(
             db=db,
             funcionario_id=current_user.id,
@@ -185,7 +175,6 @@ async def delete_cliente(request: Request, id: int, db: Session = Depends(get_db
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Cliente não encontrado"
             )
-        # ✅ dados antes de deletar
         dados_antigos = {
             "id": cliente.id,
             "nome": cliente.nome,
@@ -195,8 +184,6 @@ async def delete_cliente(request: Request, id: int, db: Session = Depends(get_db
 
         db.delete(cliente)
         db.commit()
-
-        # ✅ auditoria
         AuditoriaService.registrar_acao(
             db=db,
             funcionario_id=current_user.id,

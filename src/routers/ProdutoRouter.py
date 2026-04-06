@@ -84,7 +84,7 @@ async def post_produto(request: Request, produto_data: ProdutoCreate, db: Sessio
         #    )
         # Cria o novo produto
         novo_produto = ProdutoDB(
-            id=None, # Será auto-incrementado
+            id=None, 
             nome=produto_data.nome,
             descricao=produto_data.descricao,
             valor_unitario=produto_data.valor_unitario,
@@ -93,8 +93,6 @@ async def post_produto(request: Request, produto_data: ProdutoCreate, db: Sessio
         db.add(novo_produto)
         db.commit()
         db.refresh(novo_produto)
-
-        # ✅ dados novos
         dados_novos = {
             "id": novo_produto.id,
             "nome": novo_produto.nome,
@@ -145,7 +143,6 @@ async def put_produto(request: Request, id: int, produto_data: ProdutoUpdate, db
         update_data = produto_data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(produto, field, value)
-        # ✅ dados antigos
         dados_antigos = {
             "id": produto.id,
             "nome": produto.nome,
@@ -154,7 +151,6 @@ async def put_produto(request: Request, id: int, produto_data: ProdutoUpdate, db
             "foto": produto.foto
         }
 
-        # Atualiza campos
         update_data = produto_data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(produto, field, value)
@@ -162,7 +158,6 @@ async def put_produto(request: Request, id: int, produto_data: ProdutoUpdate, db
         db.commit()
         db.refresh(produto)
 
-        # ✅ dados novos
         dados_novos = {
             "id": produto.id,
             "nome": produto.nome,
@@ -171,7 +166,6 @@ async def put_produto(request: Request, id: int, produto_data: ProdutoUpdate, db
             "foto": produto.foto
         }
 
-        # ✅ auditoria
         AuditoriaService.registrar_acao(
             db=db,
             funcionario_id=current_user.id,
@@ -204,7 +198,6 @@ async def delete_produto(request: Request, id: int, db: Session = Depends(get_db
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Produto não encontrado"
             )
-        # ✅ dados antes de deletar
         dados_antigos = {
             "id": produto.id,
             "nome": produto.nome,
@@ -215,8 +208,6 @@ async def delete_produto(request: Request, id: int, db: Session = Depends(get_db
 
         db.delete(produto)
         db.commit()
-
-        # ✅ auditoria
         AuditoriaService.registrar_acao(
             db=db,
             funcionario_id=current_user.id,

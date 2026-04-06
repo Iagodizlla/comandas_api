@@ -93,7 +93,7 @@ async def post_funcionario(request: Request, funcionario_data: FuncionarioCreate
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro ao criar funcionário: {str(e)}")
 
 @router.put("/funcionario/{id}", response_model=FuncionarioResponse, tags=["Funcionário"], status_code=status.HTTP_200_OK)
-@limiter.limit(get_rate_limit("restrictive"))  # ✅ corrigido
+@limiter.limit(get_rate_limit("restrictive"))
 async def put_funcionario(
     request: Request,
     id: int,
@@ -109,8 +109,6 @@ async def put_funcionario(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Funcionário não encontrado"
             )
-
-        # ✅ COPIA DOS DADOS ANTIGOS (ANTES DE ALTERAR)
         dados_antigos = {
             "id": funcionario.id,
             "nome": funcionario.nome,
@@ -118,8 +116,6 @@ async def put_funcionario(
             "matricula": funcionario.matricula,
             "grupo": funcionario.grupo
         }
-
-        # Verifica CPF duplicado
         if funcionario_data.cpf and funcionario_data.cpf != funcionario.cpf:
             existing_funcionario = db.query(FuncionarioDB).filter(
                 FuncionarioDB.cpf == funcionario_data.cpf
@@ -142,8 +138,6 @@ async def put_funcionario(
 
         db.commit()
         db.refresh(funcionario)
-
-        # ✅ DADOS NOVOS (DEPOIS DO UPDATE)
         dados_novos = {
             "id": funcionario.id,
             "nome": funcionario.nome,
@@ -151,8 +145,6 @@ async def put_funcionario(
             "matricula": funcionario.matricula,
             "grupo": funcionario.grupo
         }
-
-        # ✅ AUDITORIA
         AuditoriaService.registrar_acao(
             db=db,
             funcionario_id=current_user.id,
@@ -191,8 +183,6 @@ async def delete_funcionario(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Funcionário não encontrado"
             )
-
-        # ✅ SALVA OS DADOS ANTES
         dados_antigos = {
             "id": funcionario.id,
             "nome": funcionario.nome,
@@ -203,8 +193,6 @@ async def delete_funcionario(
 
         db.delete(funcionario)
         db.commit()
-
-        # ✅ AGORA REGISTRA
         AuditoriaService.registrar_acao(
             db=db,
             funcionario_id=current_user.id,
