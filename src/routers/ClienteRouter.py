@@ -4,6 +4,7 @@ from infra.rate_limit import limiter, get_rate_limit
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
 from typing import List
+from services.AuditoriaService import AuditoriaService
 
 # Domain Schemas
 from domain.schemas.ClienteSchema import (
@@ -74,7 +75,28 @@ async def post_cliente(request: Request, cliente_data: ClienteCreate, db: Sessio
         )
         db.add(novo_cliente)
         db.commit()
+        db.add(novo_cliente)
         db.refresh(novo_cliente)
+
+        # ✅ dados novos
+        dados_novos = {
+            "id": novo_cliente.id,
+            "nome": novo_cliente.nome,
+            "cpf": novo_cliente.cpf,
+            "telefone": novo_cliente.telefone
+        }
+
+        AuditoriaService.registrar_acao(
+            db=db,
+            funcionario_id=current_user.id,
+            acao="CREATE",
+            recurso="CLIENTE",
+            recurso_id=novo_cliente.id,
+            dados_antigos=None,
+            dados_novos=dados_novos,
+            request=request
+        )
+
         return novo_cliente
     except HTTPException:
         raise
@@ -106,8 +128,42 @@ async def put_cliente(request: Request, id: int, cliente_data: ClienteUpdate, db
         update_data = cliente_data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(cliente, field, value)
+        # ✅ dados antigos (ANTES)
+        dados_antigos = {
+            "id": cliente.id,
+            "nome": cliente.nome,
+            "cpf": cliente.cpf,
+            "telefone": cliente.telefone
+        }
+
+        # Atualiza campos
+        update_data = cliente_data.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(cliente, field, value)
+
         db.commit()
         db.refresh(cliente)
+
+        # ✅ dados novos (DEPOIS)
+        dados_novos = {
+            "id": cliente.id,
+            "nome": cliente.nome,
+            "cpf": cliente.cpf,
+            "telefone": cliente.telefone
+        }
+
+        # ✅ auditoria
+        AuditoriaService.registrar_acao(
+            db=db,
+            funcionario_id=current_user.id,
+            acao="UPDATE",
+            recurso="CLIENTE",
+            recurso_id=cliente.id,
+            dados_antigos=dados_antigos,
+            dados_novos=dados_novos,
+            request=request
+        )
+
         return cliente
     except HTTPException:
         raise
@@ -129,8 +185,29 @@ async def delete_cliente(request: Request, id: int, db: Session = Depends(get_db
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Cliente não encontrado"
             )
+        # ✅ dados antes de deletar
+        dados_antigos = {
+            "id": cliente.id,
+            "nome": cliente.nome,
+            "cpf": cliente.cpf,
+            "telefone": cliente.telefone
+        }
+
         db.delete(cliente)
         db.commit()
+
+        # ✅ auditoria
+        AuditoriaService.registrar_acao(
+            db=db,
+            funcionario_id=current_user.id,
+            acao="DELETE",
+            recurso="CLIENTE",
+            recurso_id=id,
+            dados_antigos=dados_antigos,
+            dados_novos=None,
+            request=request
+        )
+
         return None
     except HTTPException:
         raise

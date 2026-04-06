@@ -71,31 +71,35 @@ async def listar_auditoria(
         raise
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro ao listar auditoria: {str(e)}")
+
 @router.get("/auditoria/acoes", tags=["Auditoria"], summary="Listar tipos de ações disponíveis para filtro - protegida por JWT e grupo 1")
 @limiter.limit(get_rate_limit("light"))
 async def listar_acoes_disponiveis(
     request: Request,
-    db: Session = Depends(get_db), current_user: FuncionarioAuth = Depends(require_group([1]))
+    db: Session = Depends(get_db),
+    current_user: FuncionarioAuth = Depends(require_group([1]))
 ):
-    """
-    Lista os tipos de ações e recursos disponíveis para filtro.
-    Retorna apenas ações e recursos que possuem registros de auditoria.
-    """
     try:
-        # Buscar ações e recursos distintos no banco de dados
+        # 🔹 valores padrão (fixos do sistema)
+        acoes_padrao = ["LOGIN", "CANCEL", "CREATE", "DELETE"]
+        recursos_padrao = ["AUTH", "comanda", "FUNCIONARIO"]
+
+        # 🔹 valores do banco
         acoes_db = db.query(AuditoriaDB.acao).distinct().all()
         recursos_db = db.query(AuditoriaDB.recurso).distinct().all()
-        # Montar response com dados reais do banco
+
+        acoes_db = [a[0] for a in acoes_db]
+        recursos_db = [r[0] for r in recursos_db]
+
+        # 🔹 junta tudo (sem duplicar)
+        acoes_final = list(set(acoes_padrao + acoes_db))
+        recursos_final = list(set(recursos_padrao + recursos_db))
+
         return {
-            "acoes": [
-                {"codigo": acao[0]}
-                for acao in acoes_db
-            ],
-            "recursos": [
-                {"codigo": recurso[0]}
-                for recurso in recursos_db
-            ]
+            "acoes": [{"codigo": acao} for acao in acoes_final],
+            "recursos": [{"codigo": recurso} for recurso in recursos_final]
         }
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

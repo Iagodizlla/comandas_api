@@ -4,6 +4,7 @@ from infra.rate_limit import limiter, get_rate_limit
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
 from typing import List
+from services.AuditoriaService import AuditoriaService
 
 # Domain Schemas
 from domain.schemas.ProdutoSchema import (
@@ -92,6 +93,27 @@ async def post_produto(request: Request, produto_data: ProdutoCreate, db: Sessio
         db.add(novo_produto)
         db.commit()
         db.refresh(novo_produto)
+
+        # ✅ dados novos
+        dados_novos = {
+            "id": novo_produto.id,
+            "nome": novo_produto.nome,
+            "descricao": novo_produto.descricao,
+            "valor_unitario": float(novo_produto.valor_unitario),
+            "foto": novo_produto.foto
+        }
+
+        AuditoriaService.registrar_acao(
+            db=db,
+            funcionario_id=current_user.id,
+            acao="CREATE",
+            recurso="PRODUTO",
+            recurso_id=novo_produto.id,
+            dados_antigos=None,
+            dados_novos=dados_novos,
+            request=request
+        )
+
         return novo_produto
     except HTTPException:
         raise
@@ -123,8 +145,44 @@ async def put_produto(request: Request, id: int, produto_data: ProdutoUpdate, db
         update_data = produto_data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(produto, field, value)
+        # ✅ dados antigos
+        dados_antigos = {
+            "id": produto.id,
+            "nome": produto.nome,
+            "descricao": produto.descricao,
+            "valor_unitario": float(produto.valor_unitario),
+            "foto": produto.foto
+        }
+
+        # Atualiza campos
+        update_data = produto_data.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(produto, field, value)
+
         db.commit()
         db.refresh(produto)
+
+        # ✅ dados novos
+        dados_novos = {
+            "id": produto.id,
+            "nome": produto.nome,
+            "descricao": produto.descricao,
+            "valor_unitario": float(produto.valor_unitario),
+            "foto": produto.foto
+        }
+
+        # ✅ auditoria
+        AuditoriaService.registrar_acao(
+            db=db,
+            funcionario_id=current_user.id,
+            acao="UPDATE",
+            recurso="PRODUTO",
+            recurso_id=produto.id,
+            dados_antigos=dados_antigos,
+            dados_novos=dados_novos,
+            request=request
+        )
+
         return produto
     except HTTPException:
         raise
@@ -146,8 +204,30 @@ async def delete_produto(request: Request, id: int, db: Session = Depends(get_db
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Produto não encontrado"
             )
+        # ✅ dados antes de deletar
+        dados_antigos = {
+            "id": produto.id,
+            "nome": produto.nome,
+            "descricao": produto.descricao,
+            "valor_unitario": float(produto.valor_unitario),
+            "foto": produto.foto
+        }
+
         db.delete(produto)
         db.commit()
+
+        # ✅ auditoria
+        AuditoriaService.registrar_acao(
+            db=db,
+            funcionario_id=current_user.id,
+            acao="DELETE",
+            recurso="PRODUTO",
+            recurso_id=id,
+            dados_antigos=dados_antigos,
+            dados_novos=None,
+            request=request
+        )
+
         return None
     except HTTPException:
         raise
