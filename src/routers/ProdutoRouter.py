@@ -193,7 +193,7 @@ async def put_produto(request: Request, id: int, produto_data: ProdutoUpdate, db
         )
 
 @router.delete("/produto/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Produto"], summary="Remover produto")
-@limiter.limit(get_rate_limit("rescritive"))
+@limiter.limit(get_rate_limit("restrictive"))
 async def delete_produto(request: Request, id: int, db: Session = Depends(get_db),
     current_user: FuncionarioAuth = Depends(require_group([1]))):
     """Remove um produto"""

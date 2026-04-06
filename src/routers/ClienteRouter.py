@@ -174,7 +174,7 @@ async def put_cliente(request: Request, id: int, cliente_data: ClienteUpdate, db
         )
 
 @router.delete("/cliente/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Cliente"], summary="Remover cliente")
-@limiter.limit(get_rate_limit("rescritive"))
+@limiter.limit(get_rate_limit("restrictive"))
 async def delete_cliente(request: Request, id: int, db: Session = Depends(get_db),
     current_user: FuncionarioAuth = Depends(require_group([1]))):
     """Remove um cliente"""
