@@ -1,5 +1,6 @@
 from fastapi import FastAPI
-from settings import HOST, PORT, RELOAD
+from fastapi.middleware.cors import CORSMiddleware
+from settings import HOST, PORT, RELOAD, CORS_ORIGINS
 from infra.rate_limit import limiter, rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 import uvicorn
@@ -26,6 +27,19 @@ async def lifespan(app: FastAPI):
     print("API is shutting down")
 # cria a aplicação FastAPI com o contexto de vida
 app = FastAPI(lifespan=lifespan)
+#app = FastAPI() # Importar middleware personalizado
+from infra.middleware.IPAccessMiddleware import IPAccessMiddleware
+# Aplicar middleware de controle de acesso
+app.add_middleware(IPAccessMiddleware, allowed_origins=CORS_ORIGINS)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=False if "*" in CORS_ORIGINS else True, # Não permite credenciais (cookies, auth headers) se origem for *
+    allow_methods=["GET", "POST", "PUT", "DELETE"], # Métodos específicos - * para permitir todos
+    allow_headers=["Content-Type", "Authorization"], # Headers específicos - * para permitir todos
+    expose_headers=["*"], # Expõe headers para debug
+    max_age=600, # Cache de preflight por 10 minutos
+)
 # Configuração de Rate Limiting
 app.state.limiter = limiter
 # Registrar handler personalizado ANTES de incluir rotas
